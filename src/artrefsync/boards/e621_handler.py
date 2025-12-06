@@ -19,6 +19,7 @@ class E621Handler(ImageBoardHandler):
         username = config[BOARD.E621][E621.USERNAME]
         api_key = config[BOARD.E621][E621.API_KEY]
         self.black_list = config[BOARD.E621][E621.BLACK_LIST]
+        self.artist_list = list(set(config[BOARD.E621][E621.ARTISTS]))
         self.website = "https://e621.net/posts.json"
         self.hostname = "e621.net"
         self.limit = 320
@@ -30,12 +31,15 @@ class E621Handler(ImageBoardHandler):
 
     def get_board(self) -> BOARD:
         return BOARD.E621
+    
+    def get_artist_list(self):
+        return self.artist_list
 
     def get_posts(self, tag, post_limit=None) -> dict[str, Post]:
         post_dict = {}
         post_list = self.get_raw_tag_data(tag)
 
-        print(f"{self.get_board} - {tag} - TOTAL POSTS: {len(post_list)}")
+        print(f"{self.get_board()} - {tag} - TOTAL POSTS: {len(post_list)}")
         for raw_post in post_list:
             post = self.handle_post(raw_post, tag)
             if post:
@@ -46,38 +50,43 @@ class E621Handler(ImageBoardHandler):
         return post_dict
 
     def get_raw_tag_data(self, tag: str) -> list:
-        print(f"{self.get_board} - Getting metadata for tag: {tag}")
+        print(f"{self.get_board()} - Getting metadata for tag: {tag}")
         metadata = []
         oldest_id = ""
+        last_time = time.time()
         for page in range(1, 50):  # handle pagination
-            print(f"...getting page {page}")
+            print(f"{self.get_board()},{tag} - Getting page {page}. Total received: {len(metadata)}.")
             response = requests.get(
                 self._build_website_parameters(page, tag),
                 headers=self.website_headers,
                 timeout=10,
             )
             page_data = json.loads(response.content)["posts"]
-            print(len(page_data))
+            # print(f"     - Page {page} recieved with {len(page_data)} posts. {len(metadata)} total.")
             if len(page_data) == 0:
                 break
 
             if page != 1:
                 if len(page_data) < self.limit or (oldest_id == page_data[-1]["id"]):
-                    print("Repeat ID found. Ending.")
                     break
             oldest_id = page_data[-1]["id"]
             metadata.extend(page_data)
-            time.sleep(1)
+            # time.sleep(.6)
+            curr_time = time.time() - last_time
+            if curr_time < .6:
+                time.sleep(.6-curr_time)
+
         return metadata
 
     def handle_post(self, post, artist):
+        general = post["tags"]["general"]
         species = post["tags"]["species"]
         artists = post["tags"]["artist"]
         franchise = post["tags"]["copyright"]
         character = post["tags"]["character"]
         meta = post["tags"]["meta"]
         rating = f"rating_{post["rating"]}"
-        tags = species + artists + franchise + character + meta + [rating]
+        tags = general + species + artists + franchise + character + meta + [rating]
 
 
         pid = str(post["id"]).zfill(8)
@@ -91,7 +100,9 @@ class E621Handler(ImageBoardHandler):
 
         for black_listed in self.black_list:
             if black_listed in tags:
-                print(f"Skipping {pid} for {black_listed}. ({website})")
+                # print(f"Skipping {pid} for {black_listed}. ({website})")
+                stats.add(STATS.SKIP_COUNT)
+                return None
 
         stats.add(STATS.TAG_SET, tags)
         stats.add(STATS.SPECIES_SET, species)

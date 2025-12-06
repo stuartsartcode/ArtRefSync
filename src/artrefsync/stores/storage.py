@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from artrefsync.boards.board_handler import Post
+from artrefsync.stores.link_cache import Link_Cache
 from artrefsync.constants import BOARD, STORE
-
 
 class ImageStorage(ABC):
     @abstractmethod
@@ -13,7 +13,7 @@ class ImageStorage(ABC):
         pass
 
     @abstractmethod
-    def save_post(self, post: Post):
+    def save_post(self, post: Post, link_cache:Link_Cache = None):
         pass
 
     @abstractmethod

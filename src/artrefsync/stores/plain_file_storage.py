@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 import requests
 import artrefsync.stats as stats
+from artrefsync.stores.link_cache import Link_Cache
 from artrefsync.stores.storage import ImageStorage
 from artrefsync.constants import BOARD, LOCAL, STATS, STORE, TABLE
 from artrefsync.boards.board_handler import Post
@@ -49,7 +50,8 @@ class PlainLocalStorage(ImageStorage):
                 return self.board_artist_posts[board][artist]
         return {}
 
-    def save_post(self, post: Post):
+    def save_post(self, post: Post, link_cache:Link_Cache = None):
+    # def save_post(self, post: Post):
         board = post.board
         artist = post.artist_name
         # create artist folder if it does not exist.
@@ -60,10 +62,16 @@ class PlainLocalStorage(ImageStorage):
             self.board_artist_paths[artist] = artist_path
 
         try:
-            img_data = requests.get(post.url, timeout=10.0).content
+            if link_cache:
+                link_cache.get_file_from_link(post.url)
+
+            
+
+            # img_data = requests.get(post.url, timeout=10.0).content
             file_name = artist_path.joinpath(post.name + Path(post.url).suffix)
             with open(file_name, "wb") as f:
-                f.write(img_data)
+                Link_Cache.download_link_to_file(post.url, f)
+
             post.file = file_name
             file_metadata_name = artist_path.joinpath(post.name + ".json")
             with open(file_metadata_name, "w") as f:

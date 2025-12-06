@@ -1,3 +1,4 @@
+from multiprocessing.pool import ThreadPool
 import time
 from artrefsync.boards.board_handler import ImageBoardHandler
 from artrefsync.boards.rule34_handler import R34Handler
@@ -8,7 +9,7 @@ from artrefsync.stores.plain_file_storage import PlainLocalStorage
 from artrefsync.stores.eagle_storage import EagleHandler
 from artrefsync.config import Config
 from artrefsync.constants import LOCAL, R34, E621, TABLE,STORE, EAGLE, BOARD
-
+from artrefsync.stores.link_cache import Link_Cache
 
 def sync_config(config: Config = Config()):
     limit = config[TABLE.APP]["limit"]
@@ -24,49 +25,57 @@ def sync_config(config: Config = Config()):
 
     if config[TABLE.E621][E621.ENABLED]:
         print(f"Syncing {TABLE.E621} with stores: {list(s.get_store() for s in stores)}")
-        artist_list = config[TABLE.E621][E621.ARTISTS]
         board = E621Handler(config)
-        sync(board, stores, artist_list, limit)
+        sync(board, stores, limit)
 
     if config[TABLE.R34][R34.ENABLED]:
         print(f"Syncing {TABLE.R34} with stores: {list(s.get_store() for s in stores)}")
-        artist_list = config[TABLE.R34][R34.ARTISTS]
         board = R34Handler(config)
-        sync(board, stores, artist_list, limit)
+        sync(board, stores, limit)
 
 
 def sync(
     board: ImageBoardHandler,
     stores: list[ImageStorage],
-    artist_list: list[str],
     max_per_artist=10000,
 ):
-    print(f"Syncing {board} to {', '.join(artist_list)}")
-
+    print(f"Syncing {board} to {', '.join(board.get_artist_list())}")
     # First, get posts from board
-    for artist in artist_list:
+    for artist in board.get_artist_list():
+
         print(f"{board.get_board()} - Getting external posts meta data for {artist}.")
         posts = board.get_posts(artist)
 
-        for store in stores:
-            post_count = 0
-            print(f"{store.get_store()} - Getting internal posts meta data for {artist}.")
-            store_posts = store.get_posts(board.get_board(), artist)
-            # print(store_posts)
+        with Link_Cache() as cache:
+            for store in stores:
+                print(f"{store.get_store()} - Getting internal posts meta data for {artist}.")
+                store_posts = store.get_posts(board.get_board(), artist)
+                missing_posts = set(posts.keys()).difference(set(store_posts.keys()))
+                print(f"Missing post count: {len(missing_posts)}")
 
+                if len(missing_posts) == 0:
+                    continue
 
-            last_ran = time.time()
-            min_time = .1
-            for pid, post in posts.items():
-                if pid not in store_posts:
-                    if post_count % 10 == 0:
-                        print(post)
-                    store.save_post(post)
-                    curr_time = time.time()
-                    if curr_time - last_ran < min_time:
-                        time.sleep(min_time - (curr_time - last_ran))
-                    last_ran = curr_time
+                count = 0
 
-                    post_count += 1
-                    if post_count > max_per_artist:
+                start_time = time.time()
+                with ThreadPool() as pool:
+                    cache.set_store_missing_count(store.get_store(), len(missing_posts))
+                    print(f"Starting threadpool for {len(missing_posts)}")
+                    args = [(posts[pid], cache) for pid in missing_posts]
+
+                    for result in pool.starmap(store.save_post, args):
+                        if result.status_code == 200:
+                            count += 1
+                        else:
+                            print("FAILED.")
+                execution_time = time.time() - start_time
+                print(f"Finished in {execution_time:.2f} seconds")
+                
+                for retry in range(3):
+                    curr_store_posts = store.get_posts(board.get_board(), artist)
+                    if len(curr_store_posts) - len(store_posts) < len(missing_posts):
+                        print(f"Pausing for {retry+1} seconds. Remaining posts: {len(curr_store_posts) - len(store_posts)}.")
+                        time.sleep(retry + 1)
+                    else:
                         break

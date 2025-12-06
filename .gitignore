@@ -211,3 +211,5 @@ uv.lock
 artists/
 **secret**
 config/
+config/config.toml
+scratch/

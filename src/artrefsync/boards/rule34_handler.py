@@ -13,6 +13,7 @@ class R34Handler(ImageBoardHandler):
     def __init__(self, config:Config):
         self.r34_api_string = config[BOARD.R34][R34.API_KEY]
         self.black_list = config[BOARD.R34][R34.BLACK_LIST]
+        self.artist_list = list(set(config[BOARD.R34][R34.ARTISTS]))
         self.base_url = "https://api.rule34.xxx/index.php?page=dapi&s=post&q=index"
         self.hostname = "rule34.xxx"
         self.limit = 1000
@@ -20,6 +21,9 @@ class R34Handler(ImageBoardHandler):
 
     def _build_url_request(self, tag, page) -> str:
         return f"{self.base_url}{self.r34_api_string}&limit={self.limit}&tags={tag}&pid={page}"
+
+    def get_artist_list(self):
+        return self.artist_list
 
     def get_board(self) -> BOARD:
         return BOARD.R34

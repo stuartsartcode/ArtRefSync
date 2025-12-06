@@ -20,8 +20,6 @@ Given a list of artist names, sync missing works to local system from public ima
 - (Broken) [Eagle](https://en.eagle.cool/)
 - Plain File System
 
-## TODO
-
 - [ ] Make it easier for non coders to use this tool
   - [ ] GUI
   - [ ] Easier to set up config

@@ -28,6 +28,8 @@ class ImageBoardHandler(ABC):
     def get_board(self) -> BOARD:
         pass
 
+    def get_artist_list(self) -> BOARD:
+        pass
 
 if __name__ == "__main__":
     import json
