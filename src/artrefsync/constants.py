@@ -1,5 +1,15 @@
 from enum import StrEnum, auto
 
+
+def get_table_mapping():
+    return {
+        TABLE.APP: APP,
+        TABLE.R34: R34,
+        TABLE.E621: E621,
+        TABLE.EAGLE: EAGLE,
+        TABLE.LOCAL: LOCAL
+    }
+
 class TABLE(StrEnum):
     APP = auto()
     R34 = auto()
@@ -39,7 +49,7 @@ class EAGLE(StrEnum):
 
 class LOCAL(StrEnum):
     ENABLED = auto()
-    LIBRARY = auto()
+    # LIBRARY = auto()
     ARTIST_FOLDER = auto()
 
 class TAGS(StrEnum):

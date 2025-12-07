@@ -6,9 +6,14 @@ def main():
     config = Config()
 
 
+
+
+
+
 class Config:
     def __init__(self, config_path = "config", config_name = "config"):
        self.settings = Configuration(config_path, self.default_config, config_name)
+       self.path = self.settings._full_config_path
     
     def __getitem__(self, field:TABLE|STORE|BOARD) -> dict[R34|E621|EAGLE|LOCAL,]:
         return self.settings.config[field]
