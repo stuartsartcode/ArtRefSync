@@ -1,21 +1,24 @@
 import json
 from pathlib import Path
 import requests
-import artrefsync.stats as stats
+from artrefsync.stats import stats
 from artrefsync.stores.link_cache import Link_Cache
 from artrefsync.stores.storage import ImageStorage
 from artrefsync.constants import BOARD, LOCAL, STATS, STORE, TABLE
 from artrefsync.boards.board_handler import Post
-from artrefsync.config import Config
+from artrefsync.config import config
 
+import logging
+logger = logging.getLogger(__name__)
+logger.setLevel(config.log_level)
 
 def main():
     config = {TABLE.LOCAL: {LOCAL.ARTIST_FOLDER: "artists"}}
-    plain_storage = PlainLocalStorage(config)
+    plain_storage = PlainLocalStorage()
 
 
 class PlainLocalStorage(ImageStorage):
-    def __init__(self, config: Config):
+    def __init__(self):
         self.artist_folder = Path(config[TABLE.LOCAL][LOCAL.ARTIST_FOLDER])
         self.board_artist_posts = {}
         self.board_artist_paths = {}

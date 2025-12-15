@@ -2,24 +2,55 @@ import time
 import base64
 import json
 import requests
-from artrefsync.config import Config
-import artrefsync.stats as stats
+from artrefsync.api.e621_client import E621_Client
+from artrefsync.config import config
+from artrefsync.stats import stats
 from artrefsync.boards.board_handler import Post, ImageBoardHandler
-from artrefsync.constants import STATS, BOARD, E621
+from artrefsync.constants import STATS, BOARD, E621, TABLE
+
+import logging
+logger = logging.getLogger(__name__)
+logger.setLevel(config.log_level)
 
 
-class E621Handler(ImageBoardHandler):
-    """Class to handle requesting and handling messages from the image board E621
 
-    Args:
-        ImageBoardHandler: Abstract Base Class which is implemented by the E621 Handler.
+def main():
+    print("Hello World")
+    api_key = config[TABLE.E621][E621.API_KEY]
+    user_name = config[TABLE.E621][E621.USERNAME]
+    client = E621_Client(user_name, api_key)
+    posts = client.get_posts("diives")
+
+    for p in posts:
+        try:
+            if p.tags:
+                artist = p.tags.artist[0]
+                characters = []
+                # print(p.tags.character)
+                print(p.tags.copyright)
+                for character in p.tags.character:
+                    character = character.split("(")[0]
+                    characters.append(character)
+                characters = "".join(characters).removesuffix("_")
+                print(f"{str(p.id).zfill(8)}.{artist}-{characters}")
+        except Exception as e:
+            print(e)
+            print(p)
+            break
+
+
+
+
+class __E621Handler(ImageBoardHandler):
+    """Class to handle messages from the image board E621
     """
-
-    def __init__(self, config:Config):
+    def __init__(self):
         username = config[BOARD.E621][E621.USERNAME]
         api_key = config[BOARD.E621][E621.API_KEY]
         self.black_list = config[BOARD.E621][E621.BLACK_LIST]
         self.artist_list = list(set(config[BOARD.E621][E621.ARTISTS]))
+
+        self.client = E621_Client(username, api_key)
         self.website = "https://e621.net/posts.json"
         self.hostname = "e621.net"
         self.limit = 320
@@ -62,7 +93,6 @@ class E621Handler(ImageBoardHandler):
                 timeout=10,
             )
             page_data = json.loads(response.content)["posts"]
-            # print(f"     - Page {page} recieved with {len(page_data)} posts. {len(metadata)} total.")
             if len(page_data) == 0:
                 break
 
@@ -89,9 +119,10 @@ class E621Handler(ImageBoardHandler):
         tags = general + species + artists + franchise + character + meta + [rating]
 
 
-        pid = str(post["id"]).zfill(8)
+        pid = Post.make_storage_id(post["id"], self.get_board())
         name = pid + (
-            (f"-{'_'.join(character)}" if character else "")
+            (f"-{'_'.join(franchise)}" if franchise else "")
+            + (f"-{'_'.join(character)}" if character else "")
             + (f"-{'_'.join(species)}" if species else "")
         )
 
@@ -116,3 +147,9 @@ class E621Handler(ImageBoardHandler):
 
     def _build_website_parameters(self, page, tag) -> str:
         return f"{self.website}?limit={self.limit}&tags={tag}&page={page}"
+    
+    
+e621_handler = __E621Handler()
+
+if __name__ == "__main__":
+    main()

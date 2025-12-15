@@ -2,35 +2,40 @@ from multiprocessing.pool import ThreadPool
 import time
 from artrefsync.boards.board_handler import ImageBoardHandler
 from artrefsync.boards.rule34_handler import R34Handler
-from artrefsync.boards.e621_handler import E621Handler
+from artrefsync.boards.e621_handler import __E621Handler
 
 from artrefsync.stores.storage import ImageStorage
 from artrefsync.stores.plain_file_storage import PlainLocalStorage
 from artrefsync.stores.eagle_storage import EagleHandler
-from artrefsync.config import Config
-from artrefsync.constants import LOCAL, R34, E621, TABLE,STORE, EAGLE, BOARD
+from artrefsync.config import config
+from artrefsync.constants import LOCAL, R34, E621, TABLE,STORE, EAGLE, BOARD, APP
 from artrefsync.stores.link_cache import Link_Cache
 
-def sync_config(config: Config = Config()):
-    limit = config[TABLE.APP]["limit"]
+import logging
+logger = logging.getLogger(__name__)
+logger.setLevel(config.log_level)
+
+def sync_config():
+    print(config)
+    limit = config[TABLE.APP][APP.LIMIT]
 
     stores = []
     if config[TABLE.LOCAL][LOCAL.ENABLED]:
-        store = PlainLocalStorage(config)
+        store = PlainLocalStorage()
         stores.append(store)
 
     if config[TABLE.EAGLE][EAGLE.ENABLED]:
-        store = EagleHandler(config)
+        store = EagleHandler()
         stores.append(store)
 
     if config[TABLE.E621][E621.ENABLED]:
         print(f"Syncing {TABLE.E621} with stores: {list(s.get_store() for s in stores)}")
-        board = E621Handler(config)
+        board = __E621Handler()
         sync(board, stores, limit)
 
     if config[TABLE.R34][R34.ENABLED]:
         print(f"Syncing {TABLE.R34} with stores: {list(s.get_store() for s in stores)}")
-        board = R34Handler(config)
+        board = R34Handler()
         sync(board, stores, limit)
 
 

@@ -1,16 +1,20 @@
 import time
 import requests
 from bs4 import BeautifulSoup
-import artrefsync.stats as stats
-from artrefsync.config import Config
+from artrefsync.stats import stats
+from artrefsync.config import config
 from artrefsync.boards.board_handler import Post, ImageBoardHandler
 from artrefsync.constants import BOARD, R34, STATS
+
+import logging
+logger = logging.getLogger(__name__)
+logger.setLevel(config.log_level)
 
 class R34Handler(ImageBoardHandler):
     """
     Class to handle requesting and handling messages from the image board E621
     """
-    def __init__(self, config:Config):
+    def __init__(self):
         self.r34_api_string = config[BOARD.R34][R34.API_KEY]
         self.black_list = config[BOARD.R34][R34.BLACK_LIST]
         self.artist_list = list(set(config[BOARD.R34][R34.ARTISTS]))
@@ -38,7 +42,7 @@ class R34Handler(ImageBoardHandler):
             raw_posts = soup.find_all("post")
             print(f"Request {page} - {len(raw_posts)}")
             for raw_post in raw_posts:
-                post_id = str(raw_post["id"]).zfill(8)
+                post_id = Post.make_storage_id(raw_post["id"], self.get_board())
                 artist_name = tag
                 tags=raw_post["tags"].split(" ")
                 website = f'https://rule34.xxx/index.php?page=post&s=view&id={raw_post["id"]}'
@@ -65,3 +69,5 @@ class R34Handler(ImageBoardHandler):
             time.sleep(0.5)
         stats.add(STATS.POST_COUNT, len(posts))
         return posts
+
+r34handler = R34Handler()

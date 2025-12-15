@@ -19,6 +19,8 @@ class TABLE(StrEnum):
 
 class APP(StrEnum):
     LIMIT = auto()
+    LOG_LEVEL = auto()
+    ID_LENGTH = auto()
 
 class BOARD(StrEnum):
     R34 = auto()

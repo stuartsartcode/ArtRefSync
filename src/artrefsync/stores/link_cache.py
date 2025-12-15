@@ -4,6 +4,12 @@ import os
 import tempfile
 import time
 import requests
+from artrefsync.config import config
+import logging
+
+
+logger = logging.getLogger(__name__)
+logger.setLevel(config.log_level)
 
 class Link_Cache():
     def __init__(self):
